@@ -1,5 +1,7 @@
 <h1 align="center"><img src="https://github.com/HKUDS/OpenHarness/raw/main/assets/logo.png" alt="OpenHarness" width="64" style="vertical-align: middle;">&nbsp; <code>oh</code> — OpenHarness：开放智能体运行框架</h1>
 
+> **中文汉化版** — 本文档汉化自 [HKUDS/OpenHarness](https://github.com/HKUDS/OpenHarness)，原始英文版本请访问原仓库。
+
 **OpenHarness** 提供核心轻量级智能体基础设施：工具调用、技能系统、记忆管理和多智能体协调。
 
 **加入社区**：一起为开放智能体开发贡献 **Harness**。
