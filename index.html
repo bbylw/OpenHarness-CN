@@ -1,0 +1,2051 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenHarness — 开放智能体运行框架</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #0a0e17;
+  --bg-card: #111827;
+  --bg-card-hover: #1a2332;
+  --bg-surface: #0d1220;
+  --accent: #00d4ff;
+  --accent-dim: rgba(0, 212, 255, 0.15);
+  --accent-glow: rgba(0, 212, 255, 0.25);
+  --pink: #ec4899;
+  --green: #10b981;
+  --amber: #f59e0b;
+  --purple: #8b5cf6;
+  --text-primary: #e8edf5;
+  --text-secondary: #8b95a8;
+  --text-muted: #5a6478;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-accent: rgba(0, 212, 255, 0.2);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 24px;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Noto Sans SC', 'Space Grotesk', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Noise texture overlay ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+
+/* ── Container ── */
+.container { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+
+/* ── Ambient blobs ── */
+.ambient {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.4;
+}
+.ambient--cyan {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(0,212,255,0.12) 0%, transparent 70%);
+  top: -200px; right: -100px;
+  animation: float-blob 20s ease-in-out infinite;
+}
+.ambient--pink {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(236,72,153,0.08) 0%, transparent 70%);
+  top: 40%; left: -150px;
+  animation: float-blob 25s ease-in-out infinite reverse;
+}
+.ambient--purple {
+  width: 450px; height: 450px;
+  background: radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%);
+  bottom: 10%; right: -100px;
+  animation: float-blob 22s ease-in-out infinite;
+}
+
+@keyframes float-blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.05); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+/* ── Section spacing ── */
+section { padding: 100px 0; position: relative; }
+
+/* ── Section divider ── */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-accent), transparent);
+  margin: 0 auto;
+  max-width: 800px;
+}
+
+/* ── Section title ── */
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-label::before {
+  content: '';
+  width: 20px;
+  height: 1px;
+  background: var(--accent);
+}
+
+.section-title {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin-bottom: 16px;
+}
+
+.section-desc {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  line-height: 1.8;
+}
+
+/* ══════════════════════════════════
+   HERO
+   ══════════════════════════════════ */
+.hero {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: 80px;
+  position: relative;
+}
+
+/* ── Grid lines bg ── */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 100%);
+}
+
+.hero-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border: 1px solid var(--border-accent);
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--accent);
+  background: var(--accent-dim);
+  margin-bottom: 32px;
+  backdrop-filter: blur(10px);
+  animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.hero-eyebrow .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.hero h1 {
+  font-size: clamp(2.8rem, 7vw, 5.2rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  margin-bottom: 28px;
+  animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+.hero h1 .cmd {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 4px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 0.65em;
+  position: relative;
+  display: inline-block;
+}
+.hero h1 .cmd::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-accent);
+  pointer-events: none;
+}
+
+.hero-subtitle {
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  color: var(--text-secondary);
+  max-width: 640px;
+  line-height: 1.8;
+  margin-bottom: 40px;
+  animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 56px;
+  animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+.btn:active { transform: scale(0.97); }
+
+.btn--primary {
+  background: var(--accent);
+  color: var(--bg-deep);
+  box-shadow: 0 0 30px var(--accent-glow);
+}
+.btn--primary:hover {
+  background: #33e0ff;
+  box-shadow: 0 0 50px rgba(0,212,255,0.35);
+  transform: translateY(-2px);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.btn--ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* ── Hero badges ── */
+.hero-badges {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  color: var(--text-secondary);
+}
+.badge .badge-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ══════════════════════════════════
+   FEATURES GRID (5 pillars)
+   ══════════════════════════════════ */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+  margin-top: 48px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.feature-card {
+  background: var(--bg-card);
+  padding: 36px 28px;
+  position: relative;
+  transition: background 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+.feature-card:hover {
+  background: var(--bg-card-hover);
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  position: relative;
+}
+.feature-icon::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.feature-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+  letter-spacing: -0.01em;
+}
+.feature-card ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+.feature-card li {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  padding-left: 14px;
+  position: relative;
+  line-height: 1.5;
+}
+.feature-card li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+/* ══════════════════════════════════
+   WHAT IS HARNESS
+   ══════════════════════════════════ */
+.harness-explain {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+  margin-top: 48px;
+}
+
+.harness-text { max-width: 520px; }
+
+.harness-text p {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  font-size: 1.05rem;
+  line-height: 1.8;
+}
+
+.harness-goals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 28px;
+}
+.goal-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transition: border-color 0.3s;
+}
+.goal-item:hover { border-color: var(--border-accent); }
+.goal-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.goal-item span {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.goal-item strong {
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* ── Equation visual ── */
+.equation-visual {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 48px;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.equation-visual::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+.equation-formula {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+}
+.eq-block {
+  padding: 14px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  min-width: 80px;
+  border: 1px solid var(--border);
+  transition: all 0.3s;
+}
+.eq-block:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-accent);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+.eq-op {
+  font-size: 1.3rem;
+  color: var(--text-muted);
+}
+.eq-result {
+  background: var(--accent-dim);
+  border-color: var(--border-accent) !important;
+  color: var(--accent);
+}
+
+/* ══════════════════════════════════
+   QUICKSTART
+   ══════════════════════════════════ */
+.quickstart-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 32px;
+  margin-top: 48px;
+}
+
+.code-block {
+  background: #0d1117;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  font-family: 'JetBrains Mono', monospace;
+}
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+}
+.code-dots {
+  display: flex;
+  gap: 6px;
+}
+.code-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.code-dots span:nth-child(1) { background: #ff5f57; }
+.code-dots span:nth-child(2) { background: #febc2e; }
+.code-dots span:nth-child(3) { background: #28c840; }
+.code-title {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+.code-body {
+  padding: 24px;
+  font-size: 0.82rem;
+  line-height: 1.8;
+  overflow-x: auto;
+}
+.code-body .comment { color: #6a737d; }
+.code-body .keyword { color: #ff7b72; }
+.code-body .string { color: #a5d6ff; }
+.code-body .cmd-prompt { color: var(--accent); user-select: none; }
+.code-body .flag { color: #d2a8ff; }
+.code-body .url { color: #79c0ff; }
+.code-body .var { color: #ffa657; }
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.step {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transition: all 0.3s;
+}
+.step:hover {
+  border-color: var(--border-accent);
+  transform: translateX(4px);
+}
+.step-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.step-content h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.step-content p {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ══════════════════════════════════
+   PROVIDERS TABLE
+   ══════════════════════════════════ */
+.providers-wrapper { margin-top: 48px; }
+
+.provider-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  width: fit-content;
+  border: 1px solid var(--border);
+}
+.provider-tab {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  font-family: inherit;
+}
+.provider-tab.active {
+  background: var(--accent);
+  color: var(--bg-deep);
+}
+.provider-tab:not(.active):hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.04);
+}
+
+.provider-panel { display: none; }
+.provider-panel.active { display: block; }
+
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.data-table th {
+  text-align: left;
+  padding: 14px 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--border);
+}
+.data-table td {
+  padding: 14px 20px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(0,212,255,0.03); }
+.data-table td:first-child {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.data-table code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  background: rgba(255,255,255,0.04);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--accent);
+}
+
+/* ══════════════════════════════════
+   ARCHITECTURE
+   ══════════════════════════════════ */
+.arch-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  margin-top: 48px;
+}
+
+.arch-tree {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 32px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 2;
+  overflow-x: auto;
+}
+.arch-tree .folder { color: var(--accent); font-weight: 600; }
+.arch-tree .desc { color: var(--text-muted); }
+
+.arch-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.flow-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transition: all 0.3s;
+}
+.flow-card:hover {
+  border-color: var(--border-accent);
+  transform: translateX(6px);
+}
+.flow-arrow {
+  width: 24px;
+  display: flex;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+}
+.flow-node {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Agent loop code ── */
+.loop-code {
+  margin-top: 32px;
+}
+
+/* ══════════════════════════════════
+   TOOLS SECTION
+   ══════════════════════════════════ */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  margin-top: 48px;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.tool-cell {
+  background: var(--bg-card);
+  padding: 28px;
+  transition: background 0.3s;
+}
+.tool-cell:hover { background: var(--bg-card-hover); }
+.tool-cell h4 {
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tool-cell .tool-names {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.tool-cell p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Skills / Plugins row ── */
+.extend-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 48px;
+}
+
+.extend-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 36px;
+  position: relative;
+  overflow: hidden;
+}
+.extend-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+}
+.extend-card h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.extend-card p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.skill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.skill-tag {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-family: 'JetBrains Mono', monospace;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.02);
+  transition: all 0.2s;
+}
+.skill-tag:hover {
+  border-color: var(--border-accent);
+  color: var(--accent);
+}
+
+.plugin-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.plugin-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  transition: border-color 0.3s;
+}
+.plugin-list li:hover { border-color: var(--border-accent); }
+.plugin-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.plugin-type {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ══════════════════════════════════
+   TEST RESULTS
+   ══════════════════════════════════ */
+.test-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 48px;
+}
+.test-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 28px;
+  text-align: center;
+  transition: all 0.3s;
+}
+.test-card:hover {
+  border-color: rgba(16, 185, 129, 0.3);
+  transform: translateY(-3px);
+}
+.test-num {
+  font-size: 2.4rem;
+  font-weight: 900;
+  font-family: 'Space Grotesk', sans-serif;
+  letter-spacing: -0.03em;
+  color: var(--green);
+  margin-bottom: 4px;
+}
+.test-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.test-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.test-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--green);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* ══════════════════════════════════
+   PERMISSION SYSTEM
+   ══════════════════════════════════ */
+.perm-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 48px;
+}
+
+.perm-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.perm-mode {
+  padding: 20px 24px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transition: all 0.3s;
+}
+.perm-mode:hover { border-color: var(--border-accent); }
+.perm-mode h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.perm-mode p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.perm-tag {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ══════════════════════════════════
+   EXTEND SECTION
+   ══════════════════════════════════ */
+.extend-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 48px;
+}
+.extend-block {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 32px;
+  transition: all 0.3s;
+}
+.extend-block:hover {
+  border-color: var(--border-accent);
+  transform: translateY(-3px);
+}
+.extend-block h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.extend-block p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+/* ══════════════════════════════════
+   CONTRIBUTING
+   ══════════════════════════════════ */
+.contrib-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 36px;
+}
+.contrib-item {
+  padding: 18px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  text-align: center;
+  transition: all 0.3s;
+}
+.contrib-item:hover {
+  border-color: var(--border-accent);
+  transform: translateY(-2px);
+}
+.contrib-item .contrib-emoji {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+.contrib-item h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.contrib-item p {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ══════════════════════════════════
+   FOOTER
+   ══════════════════════════════════ */
+footer {
+  padding: 64px 0;
+  text-align: center;
+  position: relative;
+}
+footer::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-accent), transparent);
+}
+.footer-logo {
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+.footer-tagline {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.footer-sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 24px;
+}
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.footer-links a {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--accent); }
+.footer-copy {
+  margin-top: 32px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ══════════════════════════════════
+   NAV
+   ══════════════════════════════════ */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 16px 0;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(10, 14, 23, 0.75);
+  border-bottom: 1px solid var(--border);
+  transition: all 0.3s;
+}
+.nav-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+.nav-brand img {
+  width: 28px;
+  height: 28px;
+}
+.nav-brand code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-links a {
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.nav-links a:hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.04);
+}
+.nav-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary) !important;
+  font-weight: 500;
+  border: 1px solid var(--border);
+}
+.nav-github:hover {
+  background: rgba(255,255,255,0.1) !important;
+  border-color: rgba(255,255,255,0.12);
+}
+
+/* ══════════════════════════════════
+   SCROLL ANIMATIONS
+   ══════════════════════════════════ */
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+
+/* ══════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════ */
+@media (max-width: 1024px) {
+  .features-grid { grid-template-columns: repeat(3, 1fr); }
+  .harness-explain,
+  .quickstart-grid,
+  .arch-layout,
+  .perm-layout { grid-template-columns: 1fr; gap: 32px; }
+  .extend-row { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  section { padding: 64px 0; }
+  .features-grid { grid-template-columns: 1fr 1fr; }
+  .tools-grid { grid-template-columns: 1fr; }
+  .test-grid { grid-template-columns: 1fr 1fr; }
+  .extend-grid { grid-template-columns: 1fr; }
+  .nav-links { display: none; }
+  .hero h1 { font-size: 2.4rem; }
+  .hero-badges { gap: 8px; }
+}
+
+@media (max-width: 480px) {
+  .features-grid { grid-template-columns: 1fr; }
+  .test-grid { grid-template-columns: 1fr; }
+  .harness-goals { grid-template-columns: 1fr; }
+  .hero-actions { flex-direction: column; }
+  .btn { width: 100%; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Ambient blobs -->
+<div class="ambient ambient--cyan"></div>
+<div class="ambient ambient--pink"></div>
+<div class="ambient ambient--purple"></div>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-brand">
+      <img src="https://github.com/HKUDS/OpenHarness/raw/main/assets/logo.png" alt="Logo">
+      OpenHarness
+      <code>oh</code>
+    </a>
+    <div class="nav-links">
+      <a href="#features">特性</a>
+      <a href="#quickstart">快速开始</a>
+      <a href="#providers">提供商</a>
+      <a href="#architecture">架构</a>
+      <a href="#tools">工具</a>
+      <a href="#tests">测试</a>
+      <a class="nav-github" href="https://github.com/HKUDS/OpenHarness" target="_blank">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════
+     HERO
+     ══════════════════════════════════ -->
+<section class="hero">
+  <div class="container hero-inner">
+    <div class="hero-eyebrow">
+      <span class="dot"></span>
+      v0.1.0 · 首次开源发布 · 2026-04
+    </div>
+    <h1>
+      开放智能体<br>运行框架
+      <span class="cmd">oh</span>
+    </h1>
+    <p class="hero-subtitle">
+      一条命令启动 OpenHarness，解锁工具调用、技能系统、记忆管理和多智能体协调。<br>
+      模型是智能体，代码是运行框架。
+    </p>
+    <div class="hero-actions">
+      <a href="#quickstart" class="btn btn--primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        快速开始
+      </a>
+      <a href="https://github.com/HKUDS/OpenHarness" target="_blank" class="btn btn--ghost">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub 仓库
+      </a>
+    </div>
+    <div class="hero-badges">
+      <span class="badge"><span class="badge-dot" style="background:#3572A5"></span> Python ≥ 3.10</span>
+      <span class="badge"><span class="badge-dot" style="background:#61DAFB"></span> React + Ink TUI</span>
+      <span class="badge"><span class="badge-dot" style="background:var(--green)"></span> 114 测试通过</span>
+      <span class="badge"><span class="badge-dot" style="background:var(--amber)"></span> 43+ 工具</span>
+      <span class="badge"><span class="badge-dot" style="background:var(--purple)"></span> MIT 许可证</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     FEATURES
+     ══════════════════════════════════ -->
+<div class="divider"></div>
+<section id="features">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">核心能力</span>
+      <h2 class="section-title">五大 Harness 特性</h2>
+      <p class="section-desc">OpenHarness 通过五个核心子系统，将大语言模型打造为功能完备的智能体。</p>
+    </div>
+    <div class="features-grid reveal reveal-delay-1">
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(6,182,212,0.12);">🔄</div>
+        <h3>智能体循环</h3>
+        <ul>
+          <li>流式工具调用循环</li>
+          <li>API 指数退避重试</li>
+          <li>并行工具执行</li>
+          <li>Token 计数与费用追踪</li>
+        </ul>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(16,185,129,0.12);">🔧</div>
+        <h3>Harness 工具箱</h3>
+        <ul>
+          <li>43 个工具（文件、Shell、搜索、Web、MCP）</li>
+          <li>按需加载技能（.md）</li>
+          <li>插件生态系统</li>
+          <li>兼容 anthropics/skills</li>
+        </ul>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(139,92,246,0.12);">🧠</div>
+        <h3>上下文与记忆</h3>
+        <ul>
+          <li>CLAUDE.md 发现与注入</li>
+          <li>上下文压缩（自动精简）</li>
+          <li>MEMORY.md 持久化记忆</li>
+          <li>会话恢复与历史记录</li>
+        </ul>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(245,158,11,0.12);">🛡️</div>
+        <h3>安全治理</h3>
+        <ul>
+          <li>多级权限模式</li>
+          <li>路径级与命令级规则</li>
+          <li>PreToolUse / PostToolUse 钩子</li>
+          <li>交互式审批对话框</li>
+        </ul>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(236,72,153,0.12);">🤝</div>
+        <h3>集群协调</h3>
+        <ul>
+          <li>子智能体生成与任务委派</li>
+          <li>团队注册与任务管理</li>
+          <li>后台任务生命周期</li>
+          <li>ClawTeam 集成（路线图）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     WHAT IS HARNESS
+     ══════════════════════════════════ -->
+<div class="divider"></div>
+<section id="harness">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">概念</span>
+      <h2 class="section-title">什么是智能体运行框架？</h2>
+    </div>
+    <div class="harness-explain">
+      <div class="harness-text reveal reveal-delay-1">
+        <p><strong>Agent Harness</strong> 是围绕大语言模型构建的完整基础设施，使其成为功能完备的智能体。模型提供智能，框架提供<strong>双手、眼睛、记忆和安全边界</strong>。</p>
+        <p>OpenHarness 是一个开源 Python 实现，面向研究者、开发者和社区设计。</p>
+        <div class="harness-goals">
+          <div class="goal-item">
+            <span class="goal-icon">🔍</span>
+            <span><strong>理解</strong>生产级 AI 智能体底层的工作原理</span>
+          </div>
+          <div class="goal-item">
+            <span class="goal-icon">🧪</span>
+            <span><strong>实验</strong>前沿的工具、技能和智能体协调模式</span>
+          </div>
+          <div class="goal-item">
+            <span class="goal-icon">🔌</span>
+            <span><strong>扩展</strong>框架，添加自定义插件和领域知识</span>
+          </div>
+          <div class="goal-item">
+            <span class="goal-icon">🏗️</span>
+            <span><strong>构建</strong>基于成熟架构的专用智能体</span>
+          </div>
+        </div>
+      </div>
+      <div class="equation-visual reveal reveal-delay-2">
+        <h3 style="text-align:center; margin-bottom:32px; font-size:1rem; color:var(--text-secondary);">Harness 公式</h3>
+        <div class="equation-formula">
+          <div class="eq-block" style="background:rgba(139,92,246,0.08);">🧠 LLM</div>
+          <span class="eq-op">+</span>
+          <div class="eq-block">🔧 工具</div>
+          <span class="eq-op">+</span>
+          <div class="eq-block">📚 知识</div>
+          <span class="eq-op">+</span>
+          <div class="eq-block">👁️ 观察</div>
+          <span class="eq-op">+</span>
+          <div class="eq-block">⚡ 行动</div>
+          <span class="eq-op">+</span>
+          <div class="eq-block">🛡️ 权限</div>
+          <span class="eq-op">=</span>
+          <div class="eq-block eq-result">🤖 智能体</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     QUICKSTART
+     ══════════════════════════════════ -->
+<div class="divider"></div>
+<section id="quickstart">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">开始使用</span>
+      <h2 class="section-title">5 分钟快速上手</h2>
+      <p class="section-desc">一条命令自动处理操作系统检测、依赖检查和安装。</p>
+    </div>
+    <div class="quickstart-grid">
+      <div class="reveal reveal-delay-1">
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-title">TERMINAL</span>
+          </div>
+          <div class="code-body">
+<span class="comment"># 一键安装</span>
+<span class="cmd-prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/HKUDS/
+    OpenHarness/main/scripts/install.sh | bash
+
+<span class="comment"># 或从源码安装（适合贡献者）</span>
+<span class="cmd-prompt">$ </span>git clone https://github.com/HKUDS/OpenHarness.git
+<span class="cmd-prompt">$ </span><span class="keyword">cd</span> OpenHarness
+<span class="cmd-prompt">$ </span>uv sync <span class="flag">--extra</span> dev
+
+<span class="comment"># 配置提供商（以 Kimi 为例）</span>
+<span class="cmd-prompt">$ </span><span class="keyword">export</span> <span class="var">ANTHROPIC_BASE_URL</span>=<span class="string">https://api.moonshot.cn/anthropic</span>
+<span class="cmd-prompt">$ </span><span class="keyword">export</span> <span class="var">ANTHROPIC_API_KEY</span>=<span class="string">your_kimi_api_key</span>
+<span class="cmd-prompt">$ </span><span class="keyword">export</span> <span class="var">ANTHROPIC_MODEL</span>=<span class="string">kimi-k2.5</span>
+
+<span class="comment"># 启动 OpenHarness</span>
+<span class="cmd-prompt">$ </span>oh
+<span class="cmd-prompt">$ </span>oh <span class="flag">-p</span> <span class="string">"检查这个仓库并列出前 3 个重构建议"</span>
+          </div>
+        </div>
+
+        <div class="code-block" style="margin-top:20px;">
+          <div class="code-header">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-title">非交互模式</span>
+          </div>
+          <div class="code-body">
+<span class="comment"># 单次提示 → 标准输出</span>
+<span class="cmd-prompt">$ </span>oh <span class="flag">-p</span> <span class="string">"解释这个代码库"</span>
+
+<span class="comment"># JSON 输出，适合程序化使用</span>
+<span class="cmd-prompt">$ </span>oh <span class="flag">-p</span> <span class="string">"列出 main.py 中的所有函数"</span> <span class="flag">--output-format</span> json
+
+<span class="comment"># 实时流式 JSON 事件</span>
+<span class="cmd-prompt">$ </span>oh <span class="flag">-p</span> <span class="string">"修复这个 bug"</span> <span class="flag">--output-format</span> stream-json
+          </div>
+        </div>
+      </div>
+
+      <div class="steps-list reveal reveal-delay-2">
+        <div class="step">
+          <span class="step-num">1</span>
+          <div class="step-content">
+            <h4>环境检测</h4>
+            <p>自动检测操作系统（Linux / macOS / WSL），验证 Python ≥ 3.10 和 Node.js ≥ 18</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-num">2</span>
+          <div class="step-content">
+            <h4>安装框架</h4>
+            <p>通过 pip 安装 OpenHarness，设置 React TUI（npm install）</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-num">3</span>
+          <div class="step-content">
+            <h4>初始化配置</h4>
+            <p>创建 ~/.openharness/ 配置目录，生成默认设置</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-num">4</span>
+          <div class="step-content">
+            <h4>配置提供商</h4>
+            <p>设置 API 密钥，支持 Anthropic、Kimi、DashScope、DeepSeek 等</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-num">5</span>
+          <div class="step-content">
+            <h4>启动智能体</h4>
+            <p>运行 oh 命令，开始智能体对话，或使用 -p 进行非交互调用</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-num">6</span>
+          <div class="step-content">
+            <h4>验证安装</h4>
+            <p>通过 oh --version 确认安装成功</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     PROVIDERS
+     ══════════════════════════════════ -->
+<div class="divider"></div>
+<section id="providers">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">兼容性</span>
+      <h2 class="section-title">提供商兼容</h2>
+      <p class="section-desc">支持三种 API 格式，覆盖主流 LLM 服务商。</p>
+    </div>
+    <div class="providers-wrapper reveal reveal-delay-1">
+      <div class="provider-tabs">
+        <button class="provider-tab active" onclick="switchTab(this, 'anthropic')">Anthropic 格式</button>
+        <button class="provider-tab" onclick="switchTab(this, 'openai')">OpenAI 格式</button>
+        <button class="provider-tab" onclick="switchTab(this, 'copilot')">GitHub Copilot</button>
+      </div>
+
+      <div id="anthropic" class="provider-panel active">
+        <table class="data-table">
+          <thead>
+            <tr><th>提供商</th><th>检测信号</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Anthropic</td><td>未设置自定义 BASE_URL</td><td>默认 Claude 设置</td></tr>
+            <tr><td>Moonshot / Kimi</td><td>BASE_URL 包含 <code>moonshot</code></td><td>Anthropic 兼容端点</td></tr>
+            <tr><td>Vertex 兼容</td><td>URL 包含 <code>vertex</code> / <code>aiplatform</code></td><td>Vertex 上的 Anthropic 网关</td></tr>
+            <tr><td>Bedrock 兼容</td><td>URL 包含 <code>bedrock</code></td><td>Bedrock 风格部署</td></tr>
+            <tr><td>通用兼容</td><td>其他显式 BASE_URL</td><td>代理和内部网关</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="openai" class="provider-panel">
+        <table class="data-table">
+          <thead>
+            <tr><th>提供商</th><th>Base URL</th><th>示例模型</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>阿里云 DashScope</td><td><code>dashscope.aliyuncs.com</code></td><td>qwen3.5-flash、qwen3-max</td></tr>
+            <tr><td>DeepSeek</td><td><code>api.deepseek.com</code></td><td>deepseek-chat、deepseek-reasoner</td></tr>
+            <tr><td>OpenAI</td><td><code>api.openai.com/v1</code></td><td>gpt-4o、gpt-4o-mini</td></tr>
+            <tr><td>GitHub Models</td><td><code>models.inference.ai.azure.com</code></td><td>gpt-4o、Llama-3.1-405B</td></tr>
+            <tr><td>SiliconFlow</td><td><code>api.siliconflow.cn/v1</code></td><td>DeepSeek-V3</td></tr>
+            <tr><td>Groq</td><td><code>api.groq.com/openai/v1</code></td><td>llama-3.3-70b-versatile</td></tr>
+            <tr><td>Ollama（本地）</td><td><code>localhost:11434/v1</code></td><td>任意本地模型</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="copilot" class="provider-panel">
+        <table class="data-table">
+          <thead>
+            <tr><th>功能</th><th>详情</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>认证方式</td><td>GitHub OAuth 设备流（无需 API 密钥）</td></tr>
+            <tr><td>令牌管理</td><td>自动刷新短期会话令牌</td></tr>
+            <tr><td>企业版</td><td>通过 <code>--github-domain</code> 支持 GitHub Enterprise</td></tr>
+            <tr><td>模型</td><td>使用 Copilot 默认模型选择</td></tr>
+            <tr><td>API</td><td>底层为 OpenAI 兼容 Chat Completions</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     ARCHITECTURE
+     ══════════════════════════════════ -->
+<div class="divider"></div>
+<section id="architecture">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">架构</span>
+      <h2 class="section-title">Harness 架构</h2>
+      <p class="section-desc">通过 10 个子系统实现核心 Agent Harness 模式。</p>
+    </div>
+
+    <div class="arch-layout">
+      <div class="arch-tree reveal reveal-delay-1">
+<span class="folder">openharness/</span>
+  <span class="folder">engine/</span>          <span class="desc">— 🧠 智能体循环：查询 → 流式 → 工具调用 → 循环</span>
+  <span class="folder">tools/</span>           <span class="desc">— 🔧 43 个工具：文件 I/O、Shell、搜索、Web、MCP</span>
+  <span class="folder">skills/</span>          <span class="desc">— 📚 知识系统：按需加载技能（.md 文件）</span>
+  <span class="folder">plugins/</span>         <span class="desc">— 🔌 扩展：命令、钩子、智能体、MCP 服务器</span>
+  <span class="folder">permissions/</span>     <span class="desc">— 🛡️ 安全：多级模式、路径规则、命令拒绝</span>
+  <span class="folder">hooks/</span>           <span class="desc">— ⚡ 生命周期：PreToolUse / PostToolUse</span>
+  <span class="folder">commands/</span>        <span class="desc">— 💬 54 个命令：/help、/commit、/plan 等</span>
+  <span class="folder">mcp/</span>             <span class="desc">— 🌐 MCP：Model Context Protocol 客户端</span>
+  <span class="folder">memory/</span>          <span class="desc">— 🧠 记忆：持久化跨会话知识</span>
+  <span class="folder">tasks/</span>           <span class="desc">— 📋 任务：后台任务管理</span>
+  <span class="folder">coordinator/</span>     <span class="desc">— 🤝 多智能体：子智能体、团队协调</span>
+  <span class="folder">prompts/</span>         <span class="desc">— 📝 上下文：系统提示词、CLAUDE.md、技能</span>
+  <span class="folder">config/</span>          <span class="desc">— ⚙️ 设置：多层配置、迁移</span>
+  <span class="folder">ui/</span>              <span class="desc">— 🖥️ React TUI：后端协议 + 前端</span>
+      </div>
+
+      <div class="arch-flow reveal reveal-delay-2">
+        <div class="flow-card">
+          <div class="flow-node" style="background:var(--accent-dim); color:var(--accent); border:1px solid var(--border-accent);">用户提示</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node" style="background:rgba(139,92,246,0.1); color:#a78bfa; border:1px solid rgba(139,92,246,0.2);">CLI / React TUI</div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-node" style="background:rgba(139,92,246,0.1); color:#a78bfa; border:1px solid rgba(139,92,246,0.2);">RuntimeBundle</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node" style="background:rgba(16,185,129,0.1); color:var(--green); border:1px solid rgba(16,185,129,0.2);">QueryEngine</div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-node" style="background:rgba(16,185,129,0.1); color:var(--green); border:1px solid rgba(16,185,129,0.2);">API 客户端</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node" style="background:rgba(245,158,11,0.1); color:var(--amber); border:1px solid rgba(245,158,11,0.2);">tool_use</div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-node" style="background:rgba(245,158,11,0.1); color:var(--amber); border:1px solid rgba(245,158,11,0.2);">工具注册表</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node" style="background:rgba(236,72,153,0.1); color:var(--pink); border:1px solid rgba(236,72,153,0.2);">权限 + 钩子</div>
+        </div>
+        <div class="flow-card">
+          <div class="flow-node" style="background:rgba(236,72,153,0.1); color:var(--pink); border:1px solid rgba(236,72,153,0.2);">执行工具</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node" style="background:var(--accent-dim); color:var(--accent); border:1px solid var(--border-accent);">结果 → 循环</div>
+        </div>
+
+        <div class="code-block loop-code">
+          <div class="code-header">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-title">智能体循环核心</span>
+          </div>
+          <div class="code-body">
+<span class="keyword">while</span> <span class="var">True</span>:
+    response = <span class="keyword">await</span> api.stream(messages, tools)
+
+    <span class="keyword">if</span> response.stop_reason != <span class="string">"tool_use"</span>:
+        <span class="keyword">break</span>  <span class="comment"># 模型完成</span>
+
+    <span class="keyword">for</span> tool_call <span class="keyword">in</span> response.tool_uses:
+        <span class="comment"># 权限检查 → 钩子 → 执行 → 钩子 → 结果</span>
+        result = <span class="keyword">await</span> harness.execute_tool(tool_call)
+
+    messages.append(tool_results)
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     TOOLS
+     ══════════════════════════════════ -->
+<div class="divider"></div>
+<section id="tools">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">工具与能力</span>
+      <h2 class="section-title">43+ 内置工具</h2>
+      <p class="section-desc">涵盖文件操作、搜索、智能体协调、任务管理、MCP 集成等全方位能力。</p>
+    </div>
+
+    <div class="tools-grid reveal reveal-delay-1">
+      <div class="tool-cell">
+        <h4>📁 文件 I/O</h4>
+        <div class="tool-names">Bash · Read · Write · Edit · Glob · Grep</div>
+        <p>带权限检查的核心文件操作</p>
+      </div>
+      <div class="tool-cell">
+        <h4>🔍 搜索</h4>
+        <div class="tool-names">WebFetch · WebSearch · ToolSearch · LSP</div>
+        <p>Web 和代码搜索能力</p>
+      </div>
+      <div class="tool-cell">
+        <h4>📓 笔记本</h4>
+        <div class="tool-names">NotebookEdit</div>
+        <p>Jupyter 笔记本单元格编辑</p>
+      </div>
+      <div class="tool-cell">
+        <h4>🤖 智能体</h4>
+        <div class="tool-names">Agent · SendMessage · TeamCreate/Delete</div>
+        <p>子智能体生成与协调</p>
+      </div>
+      <div class="tool-cell">
+        <h4>📋 任务</h4>
+        <div class="tool-names">TaskCreate · Get · List · Update · Stop · Output</div>
+        <p>后台任务管理</p>
+      </div>
+      <div class="tool-cell">
+        <h4>🌐 MCP</h4>
+        <div class="tool-names">MCPTool · ListMcpResources · ReadMcpResource</div>
+        <p>Model Context Protocol 集成</p>
+      </div>
+      <div class="tool-cell">
+        <h4>🔀 模式</h4>
+        <div class="tool-names">EnterPlanMode · ExitPlanMode · Worktree</div>
+        <p>工作流模式切换</p>
+      </div>
+      <div class="tool-cell">
+        <h4>⏰ 调度</h4>
+        <div class="tool-names">CronCreate · List · Delete · RemoteTrigger</div>
+        <p>定时与远程执行</p>
+      </div>
+      <div class="tool-cell">
+        <h4>⚙️ 元操作</h4>
+        <div class="tool-names">Skill · Config · Brief · Sleep · AskUser</div>
+        <p>知识加载、配置、交互</p>
+      </div>
+    </div>
+
+    <!-- Skills + Plugins -->
+    <div class="extend-row reveal reveal-delay-2">
+      <div class="extend-card">
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--purple),transparent);"></div>
+        <h3>📚 技能系统</h3>
+        <p>技能是<strong>按需加载的知识</strong> — 仅在模型需要时加载。兼容 <a href="https://github.com/anthropics/skills" target="_blank" style="color:var(--accent);text-decoration:none;">anthropics/skills</a>，只需将 .md 文件复制到 <code style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--accent);background:var(--accent-dim);padding:2px 6px;border-radius:4px;">~/.openharness/skills/</code></p>
+        <div class="skill-tags">
+          <span class="skill-tag">commit</span>
+          <span class="skill-tag">review</span>
+          <span class="skill-tag">debug</span>
+          <span class="skill-tag">plan</span>
+          <span class="skill-tag">test</span>
+          <span class="skill-tag">simplify</span>
+          <span class="skill-tag">pdf</span>
+          <span class="skill-tag">xlsx</span>
+          <span class="skill-tag">40+ 更多</span>
+        </div>
+      </div>
+      <div class="extend-card">
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--pink),transparent);"></div>
+        <h3>🔌 插件系统</h3>
+        <p>兼容 <a href="https://github.com/anthropics/claude-code/tree/main/plugins" target="_blank" style="color:var(--accent);text-decoration:none;">claude-code 插件</a>。已测试 12 个官方插件。</p>
+        <ul class="plugin-list">
+          <li><span class="plugin-name">commit-commands</span><span class="plugin-type">命令</span></li>
+          <li><span class="plugin-name">security-guidance</span><span class="plugin-type">钩子</span></li>
+          <li><span class="plugin-name">hookify</span><span class="plugin-type">命令 + 智能体</span></li>
+          <li><span class="plugin-name">code-review</span><span class="plugin-type">智能体</span></li>
+          <li><span class="plugin-name">pr-review-toolkit</span><span class="plugin-type">智能体</span></li>
+          <li><span class="plugin-name">feature-dev</span><span class="plugin-type">命令</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     PERMISSIONS
+     ══════════════════════════════════ -->
+<div class="divider"></div>
+<section id="permissions">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">安全</span>
+      <h2 class="section-title">权限系统</h2>
+      <p class="section-desc">多级安全机制，细粒度控制每一次工具调用。</p>
+    </div>
+    <div class="perm-layout">
+      <div class="perm-modes reveal reveal-delay-1">
+        <div class="perm-mode">
+          <h4>
+            <span class="perm-tag" style="background:rgba(0,212,255,0.1);color:var(--accent);">默认</span>
+            默认模式
+          </h4>
+          <p>写入 / 执行前询问，适用于日常开发</p>
+        </div>
+        <div class="perm-mode">
+          <h4>
+            <span class="perm-tag" style="background:rgba(16,185,129,0.1);color:var(--green);">自动</span>
+            自动模式
+          </h4>
+          <p>允许所有操作，适用于沙箱环境</p>
+        </div>
+        <div class="perm-mode">
+          <h4>
+            <span class="perm-tag" style="background:rgba(245,158,11,0.1);color:var(--amber);">计划</span>
+            计划模式
+          </h4>
+          <p>阻止所有写入，适用于大型重构前审查</p>
+        </div>
+      </div>
+      <div class="reveal reveal-delay-2">
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-title">settings.json</span>
+          </div>
+          <div class="code-body">
+{
+  <span class="string">"permission"</span>: {
+    <span class="string">"mode"</span>: <span class="string">"default"</span>,
+    <span class="string">"path_rules"</span>: [
+      {<span class="string">"pattern"</span>: <span class="string">"/etc/*"</span>, <span class="string">"allow"</span>: <span class="keyword">false</span>}
+    ],
+    <span class="string">"denied_commands"</span>: [
+      <span class="string">"rm -rf /"</span>,
+      <span class="string">"DROP TABLE *"</span>
+    ]
+  }
+}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     TESTS
+     ══════════════════════════════════ -->
+<div class="divider"></div>
+<section id="tests">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">质量保障</span>
+      <h2 class="section-title">测试结果</h2>
+      <p class="section-desc">全面的测试覆盖，确保每一个 Harness 子系统稳定可靠。</p>
+    </div>
+    <div class="test-grid reveal reveal-delay-1">
+      <div class="test-card">
+        <div class="test-num">114</div>
+        <div class="test-label">单元 + 集成测试</div>
+        <div class="test-desc">核心逻辑覆盖</div>
+        <span class="test-badge">✓ 全部通过</span>
+      </div>
+      <div class="test-card">
+        <div class="test-num">6</div>
+        <div class="test-label">CLI 参数 E2E</div>
+        <div class="test-desc">真实模型调用</div>
+        <span class="test-badge">✓ 全部通过</span>
+      </div>
+      <div class="test-card">
+        <div class="test-num">9</div>
+        <div class="test-label">Harness 功能 E2E</div>
+        <div class="test-desc">重试、技能、并行、权限</div>
+        <span class="test-badge">✓ 全部通过</span>
+      </div>
+      <div class="test-card">
+        <div class="test-num">3</div>
+        <div class="test-label">React TUI E2E</div>
+        <div class="test-desc">欢迎界面、对话、状态</div>
+        <span class="test-badge">✓ 全部通过</span>
+      </div>
+      <div class="test-card">
+        <div class="test-num">4</div>
+        <div class="test-label">TUI 交互 E2E</div>
+        <div class="test-desc">命令、权限、快捷键</div>
+        <span class="test-badge">✓ 全部通过</span>
+      </div>
+      <div class="test-card">
+        <div class="test-num">12</div>
+        <div class="test-label">真实插件测试</div>
+        <div class="test-desc">anthropics/skills + claude-code/plugins</div>
+        <span class="test-badge">✓ 全部通过</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     EXTEND
+     ══════════════════════════════════ -->
+<div class="divider"></div>
+<section id="extend">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">扩展</span>
+      <h2 class="section-title">扩展 OpenHarness</h2>
+      <p class="section-desc">通过自定义工具、技能和插件，让框架适应你的需求。</p>
+    </div>
+    <div class="extend-grid reveal reveal-delay-1">
+      <div class="extend-block">
+        <h4>🔧 自定义工具</h4>
+        <p>基于 Pydantic 的类型安全工具定义，继承 BaseTool 即可快速创建。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-title">my_tool.py</span>
+          </div>
+          <div class="code-body" style="font-size:0.75rem;">
+<span class="keyword">class</span> <span class="var">MyTool</span>(BaseTool):
+    name = <span class="string">"my_tool"</span>
+    description = <span class="string">"执行有用操作"</span>
+
+    <span class="keyword">async def</span> <span class="var">execute</span>(self, args, ctx):
+        <span class="keyword">return</span> ToolResult(
+            output=f<span class="string">"结果: {args.query}"</span>
+        )
+          </div>
+        </div>
+      </div>
+      <div class="extend-block">
+        <h4>📚 自定义技能</h4>
+        <p>创建 Markdown 文件，定义领域专家知识，按需加载。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-title">my-skill.md</span>
+          </div>
+          <div class="code-body" style="font-size:0.75rem;">
+<span class="flag">---</span>
+<span class="var">name</span>: my-skill
+<span class="var">description</span>: <span class="string">领域专家指导</span>
+<span class="flag">---</span>
+
+<span class="comment"># 我的技能</span>
+
+<span class="comment">## 何时使用</span>
+当用户询问关于 [领域] 的问题时
+          </div>
+        </div>
+      </div>
+      <div class="extend-block">
+        <h4>🔌 自定义插件</h4>
+        <p>在 commands/ 中添加命令，在 hooks/ 中添加钩子，在 agents/ 中添加智能体。</p>
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-title">plugin.json</span>
+          </div>
+          <div class="code-body" style="font-size:0.75rem;">
+{
+  <span class="string">"name"</span>: <span class="string">"my-plugin"</span>,
+  <span class="string">"version"</span>: <span class="string">"1.0.0"</span>,
+  <span class="string">"description"</span>:
+    <span class="string">"我的自定义插件"</span>
+}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     CONTRIBUTING
+     ══════════════════════════════════ -->
+<div class="divider"></div>
+<section id="contributing">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">社区</span>
+      <h2 class="section-title">参与贡献</h2>
+      <p class="section-desc">OpenHarness 是一个社区驱动的研究项目，我们欢迎各领域的贡献。</p>
+    </div>
+    <div class="contrib-grid reveal reveal-delay-1">
+      <div class="contrib-item">
+        <div class="contrib-emoji">🔧</div>
+        <h4>工具</h4>
+        <p>面向特定领域的新工具实现</p>
+      </div>
+      <div class="contrib-item">
+        <div class="contrib-emoji">📚</div>
+        <h4>技能</h4>
+        <p>金融、科学、DevOps 等领域知识</p>
+      </div>
+      <div class="contrib-item">
+        <div class="contrib-emoji">🔌</div>
+        <h4>插件</h4>
+        <p>命令、钩子、智能体工作流</p>
+      </div>
+      <div class="contrib-item">
+        <div class="contrib-emoji">🤖</div>
+        <h4>提供商</h4>
+        <p>支持更多 LLM 后端</p>
+      </div>
+      <div class="contrib-item">
+        <div class="contrib-emoji">🤝</div>
+        <h4>多智能体</h4>
+        <p>协调协议、团队模式</p>
+      </div>
+      <div class="contrib-item">
+        <div class="contrib-emoji">🧪</div>
+        <h4>测试</h4>
+        <p>E2E 场景、基准测试</p>
+      </div>
+      <div class="contrib-item">
+        <div class="contrib-emoji">📖</div>
+        <h4>文档</h4>
+        <p>架构指南、教程、翻译</p>
+      </div>
+    </div>
+
+    <div class="code-block reveal reveal-delay-2" style="margin-top:36px;max-width:600px;">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">开发环境设置</span>
+      </div>
+      <div class="code-body">
+<span class="cmd-prompt">$ </span>git clone https://github.com/HKUDS/OpenHarness.git
+<span class="cmd-prompt">$ </span><span class="keyword">cd</span> OpenHarness
+<span class="cmd-prompt">$ </span>uv sync <span class="flag">--extra</span> dev
+<span class="cmd-prompt">$ </span>uv run pytest <span class="flag">-q</span>  <span class="comment"># 验证一切正常</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     FOOTER
+     ══════════════════════════════════ -->
+<footer>
+  <div class="container">
+    <div class="footer-logo">
+      <img src="https://github.com/HKUDS/OpenHarness/raw/main/assets/logo.png" alt="Logo" width="48" height="48">
+    </div>
+    <div class="footer-tagline">Oh my Harness!</div>
+    <div class="footer-sub">模型是智能体，代码是运行框架。</div>
+    <div class="footer-links">
+      <a href="https://github.com/HKUDS/OpenHarness" target="_blank">GitHub</a>
+      <a href="https://github.com/HKUDS/OpenHarness/blob/main/CONTRIBUTING.md" target="_blank">贡献指南</a>
+      <a href="https://github.com/HKUDS/OpenHarness/blob/main/CHANGELOG.md" target="_blank">更新日志</a>
+      <a href="https://github.com/HKUDS/OpenHarness/blob/main/docs/SHOWCASE.md" target="_blank">案例展示</a>
+      <a href="https://github.com/HKUDS/OpenHarness/blob/main/LICENSE" target="_blank">MIT 许可证</a>
+    </div>
+    <div class="footer-copy">© 2026 OpenHarness · HKUDS · MIT License</div>
+  </div>
+</footer>
+
+<script>
+// ── Tab switcher ──
+function switchTab(btn, panelId) {
+  document.querySelectorAll('.provider-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.provider-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+}
+
+// ── Scroll reveal ──
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Nav shrink on scroll ──
+const nav = document.querySelector('nav');
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 80) {
+    nav.style.padding = '10px 0';
+  } else {
+    nav.style.padding = '16px 0';
+  }
+}, { passive: true });
+</script>
+
+</body>
+</html>
